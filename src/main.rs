@@ -27,7 +27,14 @@ mod waves;
 use waves::{make_waves, WaveCommand, WaveUpdate, DynamicWave, sine_wave};
 use waves::notes;
 
-
+const SCREEN_WIDTH : u32 = 800;
+const SCREEN_HEIGHT: u32 = 600;
+const DESIRED_FPS : u32 = 60;
+const X_PLAYER_MAX_SPEED : f32 = 300.0;
+const EAR_DIST : f32 = 250.0;
+const RELOAD_TIME : f32 = 0.50;
+const VISIBLE_TIME : f32 = 0.10;
+const TARGET_AMPLITUDE : f32 = 0.20;
 
 #[derive(Debug)]
 struct InputState {
@@ -274,15 +281,7 @@ impl MainState {
     }
 }
 
-const SCREEN_WIDTH : u32 = 800;
-const SCREEN_HEIGHT: u32 = 600;
-const DESIRED_FPS : u32 = 60;
-const X_PLAYER_MAX_SPEED : f32 = 300.0;
-const EAR_DIST : f32 = 150.0;
-const RELOAD_TIME : f32 = 0.50;
-const VISIBLE_TIME : f32 = 0.10;
-const TARGET_FREQENCY : f32 = 1000.0;
-const TARGET_AMPLITUDE : f32 = 0.20;
+
 // Then we implement the `ggez:event::EventHandler` trait on it, which
 // requires callbacks for updating and drawing the game state each frame.
 //
