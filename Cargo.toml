@@ -1,0 +1,9 @@
+[package]
+name = "tonal"
+version = "0.1.0"
+authors = ["Alex Kursell <alexkursell@gmail.com>"]
+
+[dependencies]
+rodio = "0.8.0"
+ggez = "0.4"
+rand = "0.5"
