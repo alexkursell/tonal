@@ -1,8 +1,8 @@
 //! Basic hello world example.
 
-extern crate rodio;
 extern crate ggez;
 extern crate rand;
+extern crate rodio;
 
 use std::env;
 use std::path;
@@ -10,119 +10,140 @@ use std::sync::mpsc::Sender;
 
 use rand::prelude::*;
 
-use ggez::graphics::Point2;
-use ggez::graphics::Vector2;
+use ggez::conf;
+use ggez::conf::{WindowMode, WindowSetup};
+use ggez::event;
 use ggez::event::Keycode;
 use ggez::event::Mod;
-use ggez::conf;
-use ggez::event;
-use ggez::{Context, GameResult, ContextBuilder};
 use ggez::graphics;
+use ggez::graphics::Point2;
+use ggez::graphics::Vector2;
 use ggez::timer;
-use ggez::conf::{WindowSetup, WindowMode};
+use ggez::{Context, ContextBuilder, GameResult};
 
 use ggez::nalgebra as na;
 
 mod waves;
-use waves::{make_waves, WaveCommand, WaveUpdate, DynamicWave, sine_wave};
 use waves::notes;
+use waves::{make_waves, sine_wave, DynamicWave, WaveCommand, WaveUpdate};
 
-const SCREEN_WIDTH : u32 = 800;
+const SCREEN_WIDTH: u32 = 800;
 const SCREEN_HEIGHT: u32 = 600;
-const DESIRED_FPS : u32 = 60;
-const X_PLAYER_MAX_SPEED : f32 = 300.0;
-const EAR_DIST : f32 = 250.0;
-const RELOAD_TIME : f32 = 0.50;
-const VISIBLE_TIME : f32 = 0.10;
-const TARGET_AMPLITUDE : f32 = 0.20;
+const DESIRED_FPS: u32 = 60;
+const X_PLAYER_MAX_SPEED: f32 = 300.0;
+const EAR_DIST: f32 = 250.0;
+const RELOAD_TIME: f32 = 0.50;
+const VISIBLE_TIME: f32 = 0.10;
+const TARGET_AMPLITUDE: f32 = 0.20;
 
 #[derive(Debug)]
 struct InputState {
-	left: bool,
+    left: bool,
     right: bool,
     shoot: bool,
-	jump: bool
+    jump: bool,
 }
 
 #[derive(Debug)]
 enum ActorType {
-	Player,
-	Enemy
+    Player,
+    Enemy,
 }
 
 #[derive(Debug)]
 struct Actor {
-	tag: ActorType,
-	pos: Point2,
+    tag: ActorType,
+    pos: Point2,
     width: u32,
     height: u32,
-	velocity: Vector2,
+    velocity: Vector2,
     tone: f32,
-    sound_id: Option<u64>
+    sound_id: Option<u64>,
 }
 
 fn create_player(swave: &Sender<WaveCommand>) -> Actor {
     let sound_id = random();
-    swave.send(WaveCommand::Replace(sound_id, DynamicWave::new(880.0, 0.0, sine_wave))).unwrap();
-	Actor {
-		tag: ActorType::Player,
-		pos: Point2::new(0.0, SCREEN_HEIGHT as f32 - 50.0),
-		velocity: na::zero(),
+    swave
+        .send(WaveCommand::Replace(
+            sound_id,
+            DynamicWave::new(880.0, 0.0, sine_wave),
+        ))
+        .unwrap();
+    Actor {
+        tag: ActorType::Player,
+        pos: Point2::new(0.0, SCREEN_HEIGHT as f32 - 50.0),
+        velocity: na::zero(),
         width: 32,
         height: 32,
         tone: notes::A4,
-        sound_id: Some(sound_id)
-	}	
+        sound_id: Some(sound_id),
+    }
 }
 
 fn create_enemy(swave: &Sender<WaveCommand>, note: f32) -> Actor {
     let sound_id = random();
 
     //Main tone
-    swave.send(WaveCommand::Replace(sound_id, DynamicWave::new(440.0, 0.0, sine_wave))).unwrap();
+    swave
+        .send(WaveCommand::Replace(
+            sound_id,
+            DynamicWave::new(440.0, 0.0, sine_wave),
+        ))
+        .unwrap();
 
-	Actor {
-		tag: ActorType::Enemy,
-		pos: Point2::new((random::<u32>() % SCREEN_WIDTH) as f32, (random::<u32>() % SCREEN_HEIGHT) as f32 ),
-		velocity: Vector2::new(random::<u32>() as f32 % 100.0, random::<u32>() as f32 % 50.0 ),
+    Actor {
+        tag: ActorType::Enemy,
+        pos: Point2::new(
+            (random::<u32>() % SCREEN_WIDTH) as f32,
+            (random::<u32>() % SCREEN_HEIGHT) as f32,
+        ),
+        velocity: Vector2::new(
+            random::<u32>() as f32 % 100.0,
+            random::<u32>() as f32 % 50.0,
+        ),
         width: 64,
         height: 64,
         tone: note,
-        sound_id: Some(sound_id)
-	}
+        sound_id: Some(sound_id),
+    }
 }
 
-fn destroy_enemy(enemy: Actor, swave: &Sender<WaveCommand>){
+fn destroy_enemy(enemy: Actor, swave: &Sender<WaveCommand>) {
     if let Some(sound_id) = enemy.sound_id {
         swave.send(WaveCommand::Delete(sound_id)).unwrap();
     }
 }
 
 impl Actor {
-	fn draw(&self,
-		assets: &mut Assets,
-    	ctx: &mut Context,
-    	_world_coords: (u32, u32)) -> GameResult<()> {
-		//let (sh, sw) = world_coords;
-		let image = assets.actor_image(self);
-		let drawparams = graphics::DrawParam {
-	        dest: self.pos,
-	        rotation: 0.0,
-	        offset: graphics::Point2::new(0.0, 0.0),
-	        ..Default::default()
-	    };
-    	graphics::draw_ex(ctx, image, drawparams)
-	}
+    fn draw(
+        &self,
+        assets: &mut Assets,
+        ctx: &mut Context,
+        _world_coords: (u32, u32),
+    ) -> GameResult<()> {
+        //let (sh, sw) = world_coords;
+        let image = assets.actor_image(self);
+        let drawparams = graphics::DrawParam {
+            dest: self.pos,
+            rotation: 0.0,
+            offset: graphics::Point2::new(0.0, 0.0),
+            ..Default::default()
+        };
+        graphics::draw_ex(ctx, image, drawparams)
+    }
 
     fn center(&self) -> Point2 {
-        Point2::new(self.pos.x + self.width as f32 / 2.0, self.pos.y + self.height as f32 / 2.0)
+        Point2::new(
+            self.pos.x + self.width as f32 / 2.0,
+            self.pos.y + self.height as f32 / 2.0,
+        )
     }
 }
 
 struct Assets {
-	player_image: graphics::Image,
+    player_image: graphics::Image,
     enemy_image: graphics::Image,
-    ray_image: graphics::Image
+    ray_image: graphics::Image,
 }
 
 impl Assets {
@@ -134,7 +155,7 @@ impl Assets {
         Ok(Assets {
             player_image,
             enemy_image,
-            ray_image
+            ray_image,
         })
     }
 
@@ -159,29 +180,28 @@ impl Default for InputState {
 
 struct Gun {
     time_to_reload: f32,
-    visible: bool
+    visible: bool,
 }
 
 impl Default for Gun {
     fn default() -> Gun {
         Gun {
             time_to_reload: 0.0,
-            visible: false
+            visible: false,
         }
     }
 }
 
 impl Gun {
-    fn draw(&self,
-        player: &Actor,
-        assets: &mut Assets,
-        ctx: &mut Context,
-        ) -> GameResult<()> {
-        
+    fn draw(&self, player: &Actor, assets: &mut Assets, ctx: &mut Context) -> GameResult<()> {
         if self.visible {
             let image = &assets.ray_image;
             let drawparams = graphics::DrawParam {
-                dest: player.pos + Vector2::new(player.width as f32 / 2.0 - image.width() as f32 / 2.0, -1000.0),
+                dest: player.pos
+                    + Vector2::new(
+                        player.width as f32 / 2.0 - image.width() as f32 / 2.0,
+                        -1000.0,
+                    ),
                 rotation: 0.0,
                 offset: graphics::Point2::new(0.0, 0.0),
                 ..Default::default()
@@ -190,12 +210,11 @@ impl Gun {
         } else {
             Ok(())
         }
-        
     }
 }
 
 struct Level {
-    notes: Vec<f32>
+    notes: Vec<f32>,
 }
 
 impl Default for Level {
@@ -203,44 +222,26 @@ impl Default for Level {
         use notes::*;
 
         let mut vie_en_rose = vec![
-        //Hold me close and hold me fast
-        C5, B4, A4, G4, E4, C5, B4, 
-        //This magic spell you cast
-        A4, G4, E4, C4, B4, A4, 
-        //This is la vie en rose
-        G4, E4, C4, C4, B4, A4, G4,
-        //When you kiss me heaven sighs
-        C5, B4, A4, G4, E4, C5, B4,
-        //And though I close my eyes
-        A4, G4, E4, C4, B4, A4,
-        //I see la vie en rose
-        G4, E4, C4, C4, B4, A4, G4,
-        //When you press me to your heart
-        C5, B4, A4, G4, E4, C5, B4, 
-        //I'm in a world apart
-        A4, G4, E4, C4, B4, A4,
-        //A world where roses bloom
-        G4, E4, C4, C5, C5, C5,
-        //And when you speak angels sing from above
-        D5, D5, C5, D5, D5, C5, D5, D5, C5, G4,
-        //Everyday words seem to turn into love songs
-        D5, D5, C5, D5, D5, C5, D5, D5, C5, E5, D5,
-        //Give your heart and soul to me
-        C5, B4, A4, G4, E4, C5, B4, 
-        //And life will always be
-        A4, G4, E4, C4, B4, A4, 
-        //La vie en rose
-        G4, A4, B4, C5
-
-
-
-
+            //Hold me close and hold me fast
+            C5, B4, A4, G4, E4, C5, B4, //This magic spell you cast
+            A4, G4, E4, C4, B4, A4, //This is la vie en rose
+            G4, E4, C4, C4, B4, A4, G4, //When you kiss me heaven sighs
+            C5, B4, A4, G4, E4, C5, B4, //And though I close my eyes
+            A4, G4, E4, C4, B4, A4, //I see la vie en rose
+            G4, E4, C4, C4, B4, A4, G4, //When you press me to your heart
+            C5, B4, A4, G4, E4, C5, B4, //I'm in a world apart
+            A4, G4, E4, C4, B4, A4, //A world where roses bloom
+            G4, E4, C4, C5, C5, C5, //And when you speak angels sing from above
+            D5, D5, C5, D5, D5, C5, D5, D5, C5, G4,
+            //Everyday words seem to turn into love songs
+            D5, D5, C5, D5, D5, C5, D5, D5, C5, E5, D5, //Give your heart and soul to me
+            C5, B4, A4, G4, E4, C5, B4, //And life will always be
+            A4, G4, E4, C4, B4, A4, //La vie en rose
+            G4, A4, B4, C5,
         ];
         vie_en_rose.reverse();
 
-        Level {
-            notes: vie_en_rose
-        }
+        Level { notes: vie_en_rose }
     }
 }
 
@@ -254,7 +255,7 @@ struct MainState {
     enemies: Vec<Actor>,
     swave: Sender<WaveCommand>,
     gun: Gun,
-    levels: Vec<Level>
+    levels: Vec<Level>,
 }
 
 impl MainState {
@@ -275,12 +276,11 @@ impl MainState {
             assets: Assets::new(ctx)?,
             swave,
             gun: Gun::default(),
-            levels: vec![Level::default()]
+            levels: vec![Level::default()],
         };
         Ok(s)
     }
 }
-
 
 // Then we implement the `ggez:event::EventHandler` trait on it, which
 // requires callbacks for updating and drawing the game state each frame.
@@ -289,9 +289,8 @@ impl MainState {
 // that you can override if you wish, but the defaults are fine.
 impl event::EventHandler for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
-    	 while timer::check_update_time(ctx, DESIRED_FPS) {
+        while timer::check_update_time(ctx, DESIRED_FPS) {
             let seconds = 1.0 / (DESIRED_FPS as f32);
-
 
             if self.enemies.len() < 1 && self.levels.len() > 0 {
                 if let Some(note) = self.levels[0].notes.pop() {
@@ -299,24 +298,23 @@ impl event::EventHandler for MainState {
                 }
             }
 
-    		handle_player_input(&mut self.player, &self.input, seconds);
-          
+            handle_player_input(&mut self.player, &self.input, seconds);
+
             apply_motion(&mut self.player, seconds);
             apply_walls(&mut self.player, false);
 
             //if (self.frames % 100) == 0 {
-               for e in &mut self.enemies {
-                    apply_motion(e, seconds);
-                    apply_walls(e, true);
-                    update_enemy_sound(&self.player, e, &self.swave);
-                }
-           // }
+            for e in &mut self.enemies {
+                apply_motion(e, seconds);
+                apply_walls(e, true);
+                update_enemy_sound(&self.player, e, &self.swave);
+            }
+            // }
 
-           update_player_sound(&self.player, &self.enemies, &self.swave);
+            update_player_sound(&self.player, &self.enemies, &self.swave);
 
-           handle_shoot(self, seconds);
-            
-    	}
+            handle_shoot(self, seconds);
+        }
         Ok(())
     }
 
@@ -384,8 +382,7 @@ impl event::EventHandler for MainState {
     }
 }
 
-fn handle_player_input(player: &mut Actor, input: &InputState, dseconds: f32 ) {
-
+fn handle_player_input(player: &mut Actor, input: &InputState, dseconds: f32) {
     let cont = 0.0 + if input.left { -1.0 } else { 0.0 } + if input.right { 1.0 } else { 0.0 };
 
     player.pos.x += cont * X_PLAYER_MAX_SPEED * dseconds;
@@ -397,12 +394,12 @@ fn update_enemy_sound(player: &Actor, enemy: &Actor, swave: &Sender<WaveCommand>
 
     let freq = enemy.tone;
 
-
-    let mut leftamp = 1.0 - (((player.center().x - EAR_DIST) - enemy.pos.x).abs() / SCREEN_WIDTH as f32);
+    let mut leftamp =
+        1.0 - (((player.center().x - EAR_DIST) - enemy.pos.x).abs() / SCREEN_WIDTH as f32);
     leftamp *= leftamp;
-    let mut rightamp = 1.0 - ((player.center().x + EAR_DIST) - enemy.pos.x).abs() / SCREEN_WIDTH as f32;
+    let mut rightamp =
+        1.0 - ((player.center().x + EAR_DIST) - enemy.pos.x).abs() / SCREEN_WIDTH as f32;
     rightamp *= rightamp;
-
 
     // let sideamp = if player.center().x < enemy.pos.x {
     //     (amp, 0.0)
@@ -415,70 +412,72 @@ fn update_enemy_sound(player: &Actor, enemy: &Actor, swave: &Sender<WaveCommand>
 
     //println!("{:?} {:?}", freq, amp);
 
-    swave.send(WaveCommand::Update(enemy.sound_id.unwrap(), WaveUpdate {
-        freq,
-        amp: (leftamp, rightamp)
-    })).unwrap();
+    swave
+        .send(WaveCommand::Update(
+            enemy.sound_id.unwrap(),
+            WaveUpdate {
+                freq,
+                amp: (leftamp, rightamp),
+            },
+        ))
+        .unwrap();
 }
 
-fn update_player_sound(player: &Actor, enemies: &Vec<Actor>, swave: &Sender<WaveCommand>){
-    
+fn update_player_sound(player: &Actor, enemies: &Vec<Actor>, swave: &Sender<WaveCommand>) {
     let command = if let Some(e) = &enemies
         .iter()
-        .find(|e| e.pos.x < player.center().x && e.pos.x + e.width as f32 > player.center().x) 
-        {
-            WaveUpdate {
+        .find(|e| e.pos.x < player.center().x && e.pos.x + e.width as f32 > player.center().x)
+    {
+        WaveUpdate {
             freq: e.tone + 6.0,
-            amp: (TARGET_AMPLITUDE, TARGET_AMPLITUDE)
+            amp: (TARGET_AMPLITUDE, TARGET_AMPLITUDE),
         }
     } else {
         WaveUpdate {
             freq: 0.0,
-            amp: (0.0, 0.0)
+            amp: (0.0, 0.0),
         }
-
     };
 
-    swave.send(WaveCommand::Update(player.sound_id.unwrap(), command)).unwrap();    
+    swave
+        .send(WaveCommand::Update(player.sound_id.unwrap(), command))
+        .unwrap();
 }
 
-
-fn apply_motion(a : &mut Actor, dseconds: f32){
+fn apply_motion(a: &mut Actor, dseconds: f32) {
     a.pos += a.velocity.map(|i| i * dseconds);
 }
 
-fn apply_walls(a: &mut Actor, gutter: bool){
-
+fn apply_walls(a: &mut Actor, gutter: bool) {
     let bottom = if gutter { 50.0 } else { 0.0 };
 
-    if a.pos.x + a.width as f32 > SCREEN_WIDTH as f32{
+    if a.pos.x + a.width as f32 > SCREEN_WIDTH as f32 {
         a.pos.x = (SCREEN_WIDTH - a.width) as f32;
         a.velocity.x = -a.velocity.x
     }
-    if a.pos.x < 0.0{
+    if a.pos.x < 0.0 {
         a.pos.x = 0.0;
         a.velocity.x = -a.velocity.x
     }
     if a.pos.y + a.height as f32 > SCREEN_HEIGHT as f32 - bottom {
         a.pos.y = (SCREEN_HEIGHT - bottom as u32 - a.height) as f32;
-        a.velocity.y = -a.velocity.y 
+        a.velocity.y = -a.velocity.y
     }
-    if a.pos.y < 0.0{
+    if a.pos.y < 0.0 {
         a.pos.y = 0.0;
         a.velocity.y = -a.velocity.y
     }
-
 }
 
-fn handle_shoot(state: &mut MainState, dseconds: f32){
+fn handle_shoot(state: &mut MainState, dseconds: f32) {
     state.gun.time_to_reload = f32::max(0.0, state.gun.time_to_reload - dseconds);
 
-    if state.input.shoot && state.gun.time_to_reload <= 0.0{
-        let idx = (0..state.enemies.len())
-        .into_iter()
-        .find(|&i| {
+    if state.input.shoot && state.gun.time_to_reload <= 0.0 {
+        let idx = (0..state.enemies.len()).into_iter().find(|&i| {
             let e = &state.enemies[i];
-            if e.pos.x < state.player.center().x && e.pos.x + e.width as f32 > state.player.center().x {
+            if e.pos.x < state.player.center().x
+                && e.pos.x + e.width as f32 > state.player.center().x
+            {
                 true
             } else {
                 false
@@ -487,14 +486,13 @@ fn handle_shoot(state: &mut MainState, dseconds: f32){
 
         match idx {
             Some(i) => destroy_enemy(state.enemies.remove(i), &state.swave),
-            None => ()
+            None => (),
         };
 
         state.gun.time_to_reload = RELOAD_TIME;
     }
 
     state.gun.visible = state.gun.time_to_reload > RELOAD_TIME - VISIBLE_TIME;
-
 }
 
 // Now our main function, which does three things:
@@ -512,7 +510,11 @@ pub fn main() {
         .build()
         .unwrap();
 
-    graphics::set_mode(ctx, WindowMode::default().dimensions(SCREEN_WIDTH, SCREEN_HEIGHT)).unwrap();
+    graphics::set_mode(
+        ctx,
+        WindowMode::default().dimensions(SCREEN_WIDTH, SCREEN_HEIGHT),
+    )
+    .unwrap();
 
     //let ctx = &mut Context::load_from_conf("helloworld", "ggez", c).unwrap();
 
